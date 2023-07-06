@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 
-    Name:           git-dora.py
+    Name:           gut-dora.py
     Author:         George Tarnaras
     Description:    Simple git-based dora metrics and KPIs. 
 
