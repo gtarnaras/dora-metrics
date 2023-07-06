@@ -18,6 +18,7 @@ def extract_dora_metrics(commit_logs, git_tags):
     dora_metrics = {
         'total_commits': 0,
         'authors': set(),
+        'first_commit_date': None,
         'last_commit_date': None,
         'average_commits_per_day': 0,
         'time_between_releases': None
@@ -35,12 +36,14 @@ def extract_dora_metrics(commit_logs, git_tags):
 
             dora_metrics['total_commits'] += 1
             dora_metrics['authors'].add(match.group(2))
+            if not dora_metrics['first_commit_date'] or commit_date < dora_metrics['first_commit_date']:
+                dora_metrics['first_commit_date'] = commit_date
             if not dora_metrics['last_commit_date'] or commit_date > dora_metrics['last_commit_date']:
                 dora_metrics['last_commit_date'] = commit_date
 
     if dora_metrics['total_commits'] > 0:
-        days_since_last_commit = (datetime.now(timezone.utc) - dora_metrics['last_commit_date']).days
-        dora_metrics['average_commits_per_day'] = dora_metrics['total_commits'] / max(days_since_last_commit, 1)
+        days_between_commits = (dora_metrics['last_commit_date'] - dora_metrics['first_commit_date']).days
+        dora_metrics['average_commits_per_day'] = dora_metrics['total_commits'] / max(days_between_commits, 1)
 
     if len(git_tags) >= 2:
         tag_dates = []
@@ -66,6 +69,5 @@ if __name__ == '__main__':
     print("DORA Metrics:")
     print("Total Commits:", dora_metrics['total_commits'])
     print("Unique Authors:", len(dora_metrics['authors']))
+    print("First Commit Date:", dora_metrics['first_commit_date'])
     print("Last Commit Date:", dora_metrics['last_commit_date'])
-    print("Average Commits per Day:", dora_metrics['average_commits_per_day'])
-    print("Time Between Releases:", dora_metrics['time_between_releases'])
