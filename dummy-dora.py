@@ -71,3 +71,5 @@ if __name__ == '__main__':
     print("Unique Authors:", len(dora_metrics['authors']))
     print("First Commit Date:", dora_metrics['first_commit_date'])
     print("Last Commit Date:", dora_metrics['last_commit_date'])
+    print("Average Commits per Day:", dora_metrics['average_commits_per_day'])
+    print("Time Between Releases
