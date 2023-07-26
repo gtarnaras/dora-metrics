@@ -24,51 +24,30 @@ def get_commit_logs():
     return git_logs
 
 def extract_dora_metrics(commit_logs, git_tags):
-    dora_metrics = {
-        'total_commits': 0,
-        'authors': set(),
-        'first_commit_date': None,
-        'last_commit_date': None,
-        'average_commits_per_day': 0,
-        'time_between_releases': None
-    }
+    commit_infos = [re.match(r'^([^,]+),([^,]+),([^,]+),([^,]+),(.+)$', log).groups() for log in commit_logs]
+    commit_dates = [datetime.strptime(info[3], "%Y-%m-%d %H:%M:%S %z") for info in commit_infos if info]
+    
+    total_commits = len(commit_infos)
+    authors = {info[1] for info in commit_infos}
+    first_commit_date = min(commit_dates) if commit_dates else None
+    last_commit_date = max(commit_dates) if commit_dates else None
 
-    for log in commit_logs:
-        match = re.match(r'^([^,]+),([^,]+),([^,]+),([^,]+),(.+)$', log)
-        if match:
-            commit_date_str = match.group(4)
-            try:
-                commit_date = datetime.strptime(commit_date_str, "%Y-%m-%d %H:%M:%S %z")
-            except ValueError:
-                print(f"Error parsing commit date: {commit_date_str}")
-                continue
-
-            dora_metrics['total_commits'] += 1
-            dora_metrics['authors'].add(match.group(2))
-            if not dora_metrics['first_commit_date'] or commit_date < dora_metrics['first_commit_date']:
-                dora_metrics['first_commit_date'] = commit_date
-            if not dora_metrics['last_commit_date'] or commit_date > dora_metrics['last_commit_date']:
-                dora_metrics['last_commit_date'] = commit_date
-
-    if dora_metrics['total_commits'] > 0:
-        days_between_commits = (dora_metrics['last_commit_date'] - dora_metrics['first_commit_date']).days
-        dora_metrics['average_commits_per_day'] = dora_metrics['total_commits'] / max(days_between_commits, 1)
+    average_commits_per_day = total_commits / max((last_commit_date - first_commit_date).days, 1)
+    time_between_releases = None
 
     if len(git_tags) >= 2:
-        tag_dates = []
-        for tag in git_tags[:2]:
-            try:
-                tag_date = subprocess.check_output(['git', 'log', '-1', '--format=%ai', tag])
-                tag_date = tag_date.decode('utf-8').strip()
-                tag_dates.append(datetime.strptime(tag_date, "%Y-%m-%d %H:%M:%S %z"))
-            except ValueError:
-                print(f"Error parsing tag date: {tag_date}")
-                continue
-        
-        if len(tag_dates) == 2:
-            dora_metrics['time_between_releases'] = tag_dates[0] - tag_dates[1]
+        tag_dates = [subprocess.check_output(['git', 'log', '-1', '--format=%ai', tag]).decode('utf-8').strip() for tag in git_tags[:2]]
+        tag_dates = [datetime.strptime(date, "%Y-%m-%d %H:%M:%S %z") for date in tag_dates if date]
+        time_between_releases = tag_dates[0] - tag_dates[1] if len(tag_dates) == 2 else None
 
-    return dora_metrics
+    return {
+        'total_commits': total_commits,
+        'authors': authors,
+        'first_commit_date': first_commit_date,
+        'last_commit_date': last_commit_date,
+        'average_commits_per_day': average_commits_per_day,
+        'time_between_releases': time_between_releases,
+    }
 
 def calculate_kpi_metrics(dora_metrics):
     kpi_metrics = {
@@ -108,3 +87,6 @@ if __name__ == '__main__':
     print(f"Commit Stability: {kpi_metrics['commit_stability']}")
     print(f"Release Frequency (Days/Release): {kpi_metrics['release_frequency']}")
     print(f"Time to Release: {kpi_metrics['time_to_release']}")
+
+
+
